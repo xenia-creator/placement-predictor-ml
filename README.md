@@ -1,5 +1,9 @@
 # PlaceIQ — Student Placement Predictor
 
+## Demo
+
+![Placement Predictor UI](screenshot.png)
+
 A bold, colorful web app powered by your logistic regression model.
 
 ## Setup & Run
