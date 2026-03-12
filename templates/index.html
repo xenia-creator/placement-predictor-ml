@@ -1,0 +1,633 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+<title>PlaceMe — Student Placement Predictor</title>
+<link href="https://fonts.googleapis.com/css2?family=Syne:wght@400;700;800&family=Space+Mono:wght@400;700&display=swap" rel="stylesheet"/>
+<style>
+  :root {
+    --lime: #d4ff00;
+    --orange: #ff5c00;
+    --pink: #ff2d78;
+    --cyan: #00e5ff;
+    --dark: #0a0a0a;
+    --card: #111111;
+    --border: #222;
+    --text: #f0f0f0;
+    --muted: #666;
+  }
+
+  *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+  body {
+    background: var(--dark);
+    color: var(--text);
+    font-family: 'Space Mono', monospace;
+    min-height: 100vh;
+    overflow-x: hidden;
+  }
+
+  /* Animated grid background */
+  body::before {
+    content: '';
+    position: fixed;
+    inset: 0;
+    background-image:
+      linear-gradient(rgba(212,255,0,0.03) 1px, transparent 1px),
+      linear-gradient(90deg, rgba(212,255,0,0.03) 1px, transparent 1px);
+    background-size: 48px 48px;
+    pointer-events: none;
+    z-index: 0;
+  }
+
+  /* Floating blobs */
+  .blob {
+    position: fixed;
+    border-radius: 50%;
+    filter: blur(80px);
+    opacity: 0.15;
+    pointer-events: none;
+    z-index: 0;
+    animation: floatBlob 12s ease-in-out infinite alternate;
+  }
+  .blob-1 { width: 500px; height: 500px; background: var(--orange); top: -100px; left: -100px; animation-duration: 14s; }
+  .blob-2 { width: 400px; height: 400px; background: var(--pink); bottom: -100px; right: -50px; animation-duration: 10s; animation-delay: -5s; }
+  .blob-3 { width: 300px; height: 300px; background: var(--cyan); top: 40%; left: 50%; animation-duration: 16s; animation-delay: -3s; }
+
+  @keyframes floatBlob {
+    from { transform: translate(0, 0) scale(1); }
+    to   { transform: translate(40px, 30px) scale(1.1); }
+  }
+
+  /* Layout */
+  .container {
+    position: relative;
+    z-index: 1;
+    max-width: 860px;
+    margin: 0 auto;
+    padding: 48px 24px 80px;
+  }
+
+  /* Header */
+  header {
+    margin-bottom: 64px;
+    animation: fadeDown 0.7s ease both;
+  }
+
+  .badge {
+    display: inline-block;
+    font-size: 11px;
+    letter-spacing: 0.2em;
+    text-transform: uppercase;
+    color: var(--lime);
+    border: 1px solid var(--lime);
+    padding: 4px 12px;
+    margin-bottom: 20px;
+  }
+
+  h1 {
+    font-family: 'Syne', sans-serif;
+    font-size: clamp(42px, 8vw, 80px);
+    font-weight: 800;
+    line-height: 0.95;
+    letter-spacing: -2px;
+    margin-bottom: 20px;
+  }
+
+  h1 .accent-orange { color: var(--orange); }
+  h1 .accent-lime   { color: var(--lime); }
+
+  .subtitle {
+    font-size: 13px;
+    color: var(--muted);
+    max-width: 400px;
+    line-height: 1.8;
+    letter-spacing: 0.03em;
+  }
+
+  /* Card */
+  .card {
+    background: var(--card);
+    border: 1px solid var(--border);
+    padding: 40px;
+    margin-bottom: 24px;
+    position: relative;
+    overflow: hidden;
+    animation: fadeUp 0.7s ease both;
+  }
+
+  .card::before {
+    content: '';
+    position: absolute;
+    top: 0; left: 0; right: 0;
+    height: 2px;
+    background: linear-gradient(90deg, var(--orange), var(--pink), var(--cyan));
+  }
+
+  .card-label {
+    font-size: 10px;
+    letter-spacing: 0.25em;
+    text-transform: uppercase;
+    color: var(--muted);
+    margin-bottom: 32px;
+  }
+
+  /* Inputs grid */
+  .inputs-grid {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 32px;
+    margin-bottom: 40px;
+  }
+
+  @media (max-width: 540px) {
+    .inputs-grid { grid-template-columns: 1fr; }
+    .card { padding: 28px 20px; }
+  }
+
+  .input-group label {
+    display: block;
+    font-size: 10px;
+    letter-spacing: 0.2em;
+    text-transform: uppercase;
+    color: var(--muted);
+    margin-bottom: 12px;
+  }
+
+  .input-wrapper {
+    position: relative;
+  }
+
+  .input-wrapper .unit {
+    position: absolute;
+    right: 16px;
+    top: 50%;
+    transform: translateY(-50%);
+    font-size: 11px;
+    color: var(--muted);
+    pointer-events: none;
+  }
+
+  input[type="number"] {
+    width: 100%;
+    background: #0d0d0d;
+    border: 1px solid var(--border);
+    color: var(--text);
+    font-family: 'Space Mono', monospace;
+    font-size: 28px;
+    font-weight: 700;
+    padding: 16px 56px 16px 20px;
+    outline: none;
+    transition: border-color 0.2s, box-shadow 0.2s;
+    -moz-appearance: textfield;
+  }
+
+  input[type="number"]::-webkit-outer-spin-button,
+  input[type="number"]::-webkit-inner-spin-button { -webkit-appearance: none; }
+
+  input[type="number"]:focus {
+    border-color: var(--lime);
+    box-shadow: 0 0 0 1px var(--lime), inset 0 0 20px rgba(212,255,0,0.03);
+  }
+
+  /* Slider */
+  .slider-row {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    margin-top: 10px;
+  }
+
+  input[type="range"] {
+    flex: 1;
+    -webkit-appearance: none;
+    height: 3px;
+    background: var(--border);
+    outline: none;
+    cursor: pointer;
+  }
+
+  input[type="range"]::-webkit-slider-thumb {
+    -webkit-appearance: none;
+    width: 14px; height: 14px;
+    border-radius: 50%;
+    background: var(--lime);
+    cursor: pointer;
+    transition: transform 0.15s;
+  }
+
+  input[type="range"]::-webkit-slider-thumb:hover {
+    transform: scale(1.4);
+  }
+
+  .slider-min, .slider-max {
+    font-size: 10px;
+    color: var(--muted);
+    min-width: 24px;
+  }
+
+  /* Button */
+  .btn-predict {
+    width: 100%;
+    padding: 20px;
+    background: var(--lime);
+    color: var(--dark);
+    font-family: 'Syne', sans-serif;
+    font-size: 18px;
+    font-weight: 800;
+    letter-spacing: 0.05em;
+    text-transform: uppercase;
+    border: none;
+    cursor: pointer;
+    position: relative;
+    overflow: hidden;
+    transition: transform 0.15s, box-shadow 0.15s;
+  }
+
+  .btn-predict:hover {
+    transform: translateY(-2px);
+    box-shadow: 0 8px 32px rgba(212,255,0,0.3);
+  }
+
+  .btn-predict:active {
+    transform: translateY(0);
+  }
+
+  .btn-predict.loading {
+    pointer-events: none;
+  }
+
+  .btn-predict .btn-text { transition: opacity 0.2s; }
+  .btn-predict.loading .btn-text { opacity: 0; }
+
+  .btn-predict .spinner {
+    position: absolute;
+    top: 50%; left: 50%;
+    transform: translate(-50%, -50%);
+    width: 22px; height: 22px;
+    border: 3px solid transparent;
+    border-top-color: var(--dark);
+    border-radius: 50%;
+    opacity: 0;
+    transition: opacity 0.2s;
+    animation: spin 0.7s linear infinite;
+  }
+
+  .btn-predict.loading .spinner { opacity: 1; }
+
+  @keyframes spin { to { transform: translate(-50%, -50%) rotate(360deg); } }
+
+  /* Result */
+  .result-card {
+    background: var(--card);
+    border: 1px solid var(--border);
+    padding: 40px;
+    opacity: 0;
+    transform: translateY(20px);
+    transition: opacity 0.5s ease, transform 0.5s ease;
+    pointer-events: none;
+  }
+
+  .result-card.visible {
+    opacity: 1;
+    transform: translateY(0);
+    pointer-events: all;
+  }
+
+  .result-header {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    margin-bottom: 32px;
+    flex-wrap: wrap;
+    gap: 16px;
+  }
+
+  .verdict {
+    font-family: 'Syne', sans-serif;
+    font-size: clamp(32px, 6vw, 56px);
+    font-weight: 800;
+    line-height: 1;
+    letter-spacing: -1px;
+  }
+
+  .verdict.placed   { color: var(--lime); }
+  .verdict.rejected { color: var(--pink); }
+
+  .verdict-icon {
+    font-size: 48px;
+    animation: popIn 0.4s cubic-bezier(0.175, 0.885, 0.32, 1.275) both;
+  }
+
+  @keyframes popIn {
+    from { transform: scale(0) rotate(-20deg); opacity: 0; }
+    to   { transform: scale(1) rotate(0deg);   opacity: 1; }
+  }
+
+  /* Probability bar */
+  .prob-section { margin-bottom: 32px; }
+
+  .prob-label {
+    display: flex;
+    justify-content: space-between;
+    font-size: 10px;
+    letter-spacing: 0.2em;
+    text-transform: uppercase;
+    color: var(--muted);
+    margin-bottom: 10px;
+  }
+
+  .prob-bar-track {
+    height: 6px;
+    background: var(--border);
+    position: relative;
+    overflow: hidden;
+  }
+
+  .prob-bar-fill {
+    height: 100%;
+    width: 0%;
+    transition: width 1s cubic-bezier(0.22, 1, 0.36, 1);
+  }
+
+  .prob-bar-fill.positive { background: linear-gradient(90deg, var(--orange), var(--lime)); }
+  .prob-bar-fill.negative { background: linear-gradient(90deg, var(--pink), var(--orange)); }
+
+  .prob-value {
+    font-family: 'Syne', sans-serif;
+    font-size: 48px;
+    font-weight: 800;
+    letter-spacing: -2px;
+    line-height: 1;
+    margin-bottom: 4px;
+  }
+
+  .prob-value.positive { color: var(--lime); }
+  .prob-value.negative { color: var(--pink); }
+
+  /* Stats row */
+  .stats-row {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 16px;
+    border-top: 1px solid var(--border);
+    padding-top: 24px;
+  }
+
+  .stat {
+    background: #0d0d0d;
+    padding: 16px;
+    border: 1px solid var(--border);
+  }
+
+  .stat-label {
+    font-size: 9px;
+    letter-spacing: 0.2em;
+    text-transform: uppercase;
+    color: var(--muted);
+    margin-bottom: 6px;
+  }
+
+  .stat-value {
+    font-family: 'Syne', sans-serif;
+    font-size: 22px;
+    font-weight: 700;
+    color: var(--text);
+  }
+
+  /* Footer */
+  footer {
+    text-align: center;
+    font-size: 10px;
+    color: var(--muted);
+    letter-spacing: 0.15em;
+    padding-top: 48px;
+    border-top: 1px solid var(--border);
+    margin-top: 48px;
+    animation: fadeUp 0.7s 0.4s ease both;
+  }
+
+  footer span { color: var(--orange); }
+
+  /* Animations */
+  @keyframes fadeDown {
+    from { opacity: 0; transform: translateY(-24px); }
+    to   { opacity: 1; transform: translateY(0); }
+  }
+
+  @keyframes fadeUp {
+    from { opacity: 0; transform: translateY(24px); }
+    to   { opacity: 1; transform: translateY(0); }
+  }
+
+  /* Error */
+  .error-msg {
+    font-size: 12px;
+    color: var(--pink);
+    margin-top: 12px;
+    display: none;
+    letter-spacing: 0.05em;
+  }
+
+  /* Tooltip hint */
+  .hint {
+    font-size: 10px;
+    color: var(--muted);
+    margin-top: 6px;
+    letter-spacing: 0.05em;
+  }
+</style>
+</head>
+<body>
+
+<div class="blob blob-1"></div>
+<div class="blob blob-2"></div>
+<div class="blob blob-3"></div>
+
+<div class="container">
+
+  <header>
+    <div class="badge">ML Model v1.0 — Logistic Regression</div>
+    <h1>
+      WILL YOU<br>
+      GET <span class="accent-orange">PLACED</span><span class="accent-lime">?</span>
+    </h1>
+    <p class="subtitle">Enter your IQ score and CGPA — our model will predict your campus placement outcome instantly.</p>
+  </header>
+
+  <div class="card" style="animation-delay: 0.1s">
+    <div class="card-label">// Input Parameters</div>
+
+    <div class="inputs-grid">
+      <!-- IQ -->
+      <div class="input-group">
+        <label for="iq-input">IQ Score</label>
+        <div class="input-wrapper">
+          <input type="number" id="iq-input" min="1" max="200" value="100" placeholder="100"/>
+          <span class="unit">pts</span>
+        </div>
+        <div class="slider-row">
+          <span class="slider-min">60</span>
+          <input type="range" id="iq-slider" min="60" max="160" value="100" step="1"/>
+          <span class="slider-max">160</span>
+        </div>
+        <div class="hint">Typical range: 85 – 145</div>
+      </div>
+
+      <!-- CGPA -->
+      <div class="input-group">
+        <label for="cgpa-input">CGPA</label>
+        <div class="input-wrapper">
+          <input type="number" id="cgpa-input" min="0" max="10" step="0.1" value="7.5" placeholder="7.5"/>
+          <span class="unit">/ 10</span>
+        </div>
+        <div class="slider-row">
+          <span class="slider-min">0</span>
+          <input type="range" id="cgpa-slider" min="0" max="10" value="7.5" step="0.1"/>
+          <span class="slider-max">10</span>
+        </div>
+        <div class="hint">Scale of 10.0</div>
+      </div>
+    </div>
+
+    <button class="btn-predict" id="predict-btn" onclick="predict()">
+      <span class="btn-text">Run Prediction →</span>
+      <div class="spinner"></div>
+    </button>
+    <div class="error-msg" id="error-msg">⚠ Could not reach the model. Make sure the Flask server is running.</div>
+  </div>
+
+  <!-- Result -->
+  <div class="result-card" id="result-card">
+    <div class="result-header">
+      <div>
+        <div class="card-label">// Prediction Result</div>
+        <div class="verdict" id="verdict-text">PLACED</div>
+      </div>
+      <div class="verdict-icon" id="verdict-icon">🎓</div>
+    </div>
+
+    <div class="prob-section">
+      <div class="prob-label">
+        <span>Placement Probability</span>
+        <span id="prob-percent-label">0%</span>
+      </div>
+      <div class="prob-bar-track">
+        <div class="prob-bar-fill positive" id="prob-bar"></div>
+      </div>
+    </div>
+
+    <div class="prob-value positive" id="prob-big">0%</div>
+    <div style="font-size:11px; color: var(--muted); margin-bottom: 24px; letter-spacing: 0.05em">chance of placement</div>
+
+    <div class="stats-row">
+      <div class="stat">
+        <div class="stat-label">IQ Score</div>
+        <div class="stat-value" id="stat-iq">—</div>
+      </div>
+      <div class="stat">
+        <div class="stat-label">CGPA</div>
+        <div class="stat-value" id="stat-cgpa">—</div>
+      </div>
+    </div>
+  </div>
+
+  <footer>
+    Built with <span>Flask + scikit-learn</span> · Logistic Regression · Binary Classification
+  </footer>
+
+</div>
+
+<script>
+  // Sync sliders ↔ inputs
+  function syncSlider(inputId, sliderId) {
+    const input  = document.getElementById(inputId);
+    const slider = document.getElementById(sliderId);
+    input.addEventListener('input',  () => { slider.value = input.value; });
+    slider.addEventListener('input', () => { input.value  = slider.value; });
+  }
+
+  syncSlider('iq-input',   'iq-slider');
+  syncSlider('cgpa-input', 'cgpa-slider');
+
+  async function predict() {
+    const iq   = parseFloat(document.getElementById('iq-input').value);
+    const cgpa = parseFloat(document.getElementById('cgpa-input').value);
+    const btn  = document.getElementById('predict-btn');
+    const err  = document.getElementById('error-msg');
+
+    // Validate
+    if (isNaN(iq) || isNaN(cgpa) || iq <= 0 || cgpa < 0 || cgpa > 10) {
+      err.style.display = 'block';
+      err.textContent = '⚠ Please enter a valid IQ (> 0) and CGPA (0 – 10).';
+      return;
+    }
+
+    err.style.display = 'none';
+    btn.classList.add('loading');
+
+    try {
+      const res  = await fetch('/predict', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ iq, cgpa })
+      });
+
+      if (!res.ok) throw new Error('Server error');
+      const data = await res.json();
+      showResult(data, iq, cgpa);
+    } catch (e) {
+      err.style.display = 'block';
+      err.textContent = '⚠ Could not reach the model. Make sure the Flask server is running on port 5000.';
+    } finally {
+      btn.classList.remove('loading');
+    }
+  }
+
+  function showResult(data, iq, cgpa) {
+    const card    = document.getElementById('result-card');
+    const verdict = document.getElementById('verdict-text');
+    const icon    = document.getElementById('verdict-icon');
+    const bar     = document.getElementById('prob-bar');
+    const bigProb = document.getElementById('prob-big');
+    const pLabel  = document.getElementById('prob-percent-label');
+
+    // Safely parse probability — never undefined or NaN
+    const prob    = Number(data.placement_probability);
+    const placed  = !!data.placed;
+    const probStr = (isNaN(prob) ? 0 : prob).toFixed(1) + '%';
+
+    verdict.textContent = placed ? 'PLACED ✓' : 'NOT PLACED';
+    verdict.className = 'verdict ' + (placed ? 'placed' : 'rejected');
+    icon.textContent = placed ? '🎓' : '📚';
+    icon.style.animation = 'none';
+    void icon.offsetWidth; // reflow
+    icon.style.animation = 'popIn 0.4s cubic-bezier(0.175, 0.885, 0.32, 1.275) both';
+
+    bigProb.textContent = probStr;
+    bigProb.className = 'prob-value ' + (placed ? 'positive' : 'negative');
+    pLabel.textContent = probStr;
+    bar.className = 'prob-bar-fill ' + (placed ? 'positive' : 'negative');
+
+    document.getElementById('stat-iq').textContent   = iq;
+    document.getElementById('stat-cgpa').textContent = cgpa.toFixed(1);
+
+    // Show card
+    card.classList.add('visible');
+
+    // Animate bar after DOM paint
+    requestAnimationFrame(() => {
+      requestAnimationFrame(() => {
+        bar.style.width = prob + '%';
+      });
+    });
+  }
+
+  // Allow Enter key
+  document.addEventListener('keydown', e => {
+    if (e.key === 'Enter') predict();
+  });
+</script>
+</body>
+</html>
